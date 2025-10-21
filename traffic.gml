@@ -2,19 +2,19 @@ graph [
   directed 1
   node [
     id 0
-    label "S"
+    label "0"
   ]
   node [
     id 1
-    label "A"
+    label "1"
   ]
   node [
     id 2
-    label "B"
+    label "2"
   ]
   node [
     id 3
-    label "T"
+    label "3"
   ]
   edge [
     source 0

@@ -1,48 +1,64 @@
 import networkx as nx
 import matplotlib.pyplot as plt
-from analysis import *
+import numpy as np
 
-def visualize_graph(G, plot_type):
+def visualize_graph(G, n_vehicles, flow_eq, flow_so):
     """Visualizes the graph based on computed metrics."""
-    if G.number_of_nodes() == 0:
-        print("Cannot plot an empty graph.")
-        return
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 8))
+    fig.suptitle(f"Traffic Analysis for {n_vehicles} Vehicles", fontsize=16)
 
-    print(f"Generating plot for type: '{plot_type}'...")
-    plt.figure(figsize=(12, 12))
-    pos = nx.spring_layout(G, seed=42)
+    pos = nx.kamada_kawai_layout(G)
+    nx.draw_networkx_nodes(G, pos, ax=ax1, node_color='#add8e6', node_size=700)
+    nx.draw_networkx_labels(G, pos, ax=ax1, font_weight='bold')
+    nx.draw_networkx_edges(G, pos, ax=ax1, node_size=700,
+                           arrowstyle='->', arrowsize=20,
+                           connectionstyle='arc3,rad=0.1')
 
-    if plot_type == 'C':  # Clustering Coefficient
-        compute_clustering_coefficients(G)
-        node_sizes = [d.get('clustering_coefficient', 0) * 2000 + 100 for n, d in G.nodes(data=True)]
-        node_colors = [G.degree(n) for n in G.nodes()]
-        nx.draw(G, pos, with_labels=True, node_size=node_sizes, node_color=node_colors, cmap=plt.cm.viridis,
-                font_color='white')
-        plt.title("Graph Visualization: Clustering Coefficient & Degree")
+    edge_labels = {}
+    for u, v, data in G.edges(data=True):
+        a = data['a']
+        b = data['b']
+        eq_flow = flow_eq.get((u, v), 0.0)
+        so_flow = flow_so.get((u, v), 0.0)
+        label = (
+            f"C(x) = {a:.1f}x + {b:.1f}\n"
+            f"Eq. Flow: {eq_flow:.2f}\n"
+            f"SO. Flow: {so_flow:.2f}"
+        )
+        edge_labels[(u, v)] = label
 
-    elif plot_type == 'N':  # Neighborhood Overlap
-        compute_neighborhood_overlap(G)
-        edge_widths = [d.get('neighborhood_overlap', 0) * 5 + 0.5 for u, v, d in G.edges(data=True)]
-        # Edge color based on sum of degrees of endpoints
-        edge_colors = [G.degree(u) + G.degree(v) for u, v in G.edges()]
-        nx.draw(G, pos, with_labels=True, width=edge_widths, edge_color=edge_colors, edge_cmap=plt.cm.plasma)
-        plt.title("Graph Visualization: Neighborhood Overlap & Degree Sum")
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, ax=ax1,
+                                 font_size=9, bbox=dict(alpha=0.1, boxstyle='round,pad=0.2'))
+    ax1.set_title("Network Graph and Flow Distribution")
+    ax1.axis('off')
 
-    elif plot_type == 'P':  # Properties (color/sign)
-        node_colors = [d.get('color', 'skyblue') for n, d in G.nodes(data=True)]
+    #set x-axis range slightly larger than N to show behavior
+    x_range = np.linspace(0, n_vehicles * 1.2, 100)
 
-        pos_edges = [(u, v) for u, v, d in G.edges(data=True) if d.get('sign', 1) >= 0]
-        neg_edges = [(u, v)  for u, v, d in G.edges(data=True) if d.get('sign', 1) < 0]
+    for u, v, data in G.edges(data=True):
+        a = data['a']
+        b = data['b']
 
-        nx.draw_networkx_nodes(G, pos, node_color=node_colors)
-        nx.draw_networkx_labels(G, pos)
-        nx.draw_networkx_edges(G, pos, edgelist=pos_edges, edge_color='g', width=1.5)
-        nx.draw_networkx_edges(G, pos, edgelist=neg_edges, edge_color='r', style='dashed', width=1.5)
-        plt.title("Graph Visualization: Node/Edge Properties (color/sign)")
-    elif plot_type =='T': # unused T type, possibly temporal simulation. Flag already exists. Continue without error.
-        return
-    else:
-        print(f"Unknown plot type: {plot_type}. Defaulting to basic plot.")
-        nx.draw(G, pos, with_labels=True, node_color='skyblue')
+        #c(x) = ax + b
+        cost = a * x_range + b
+        #mc(x) = 2ax + b
+        marginal_cost = 2 * a * x_range + b
 
+        label_str = f"({u}→{v})"
+
+        line, = ax2.plot(x_range, cost, label=f"C(x) {label_str}")
+        ax2.plot(x_range, marginal_cost, linestyle='--', color=line.get_color(),
+                 label=f"MC(x) {label_str}")
+
+    ax2.set_title("Edge Cost Functions")
+    ax2.set_xlabel("Number of Vehicles (x)")
+    ax2.set_ylabel("Travel Cost (Time)")
+    ax2.axvline(x=n_vehicles, color='r', linestyle=':', label=f"Total Vehicles (N={n_vehicles})")
+    ax2.legend(fontsize='small', ncol=2)
+    ax2.grid(True, linestyle=':', alpha=0.7)
+    ax2.set_ylim(bottom=0)
+    ax2.set_xlim(left=0)
+
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    print("\nDisplaying plot... Close the plot window to exit.")
     plt.show()
