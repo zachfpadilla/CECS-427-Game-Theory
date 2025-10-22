@@ -40,6 +40,7 @@ options:
 
 ## Usage Instructions
 * ``--plot`` outputs an image of the plot to a new window.
+* `label`s of `node`s present within any inputted `.gml` files *must* be strings corresponding to the `id` of each `node` (e.g. `id 0` with `label "0"`).
 
 ## Description of Implementation
 - All instructions were followed as listed—interpretations were made where needed.
